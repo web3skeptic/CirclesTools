@@ -223,6 +223,61 @@
                 cursor: not-allowed;
             }
 
+            .fixed-checkout-container {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: white;
+                padding: 15px 20px;
+                box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+                z-index: 999;
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                max-width: 100%;
+            }
+
+            .fixed-item-info {
+                flex: 1;
+                font-size: 0.95rem;
+                color: #191568;
+                font-weight: 600;
+            }
+
+            .fixed-item-name {
+                font-size: 1rem;
+                margin-bottom: 3px;
+            }
+
+            .fixed-item-price {
+                color: #5c49e4;
+                font-weight: 700;
+                font-size: 1.1rem;
+            }
+
+            .fixed-checkout-btn {
+                background: #5c49e4;
+                color: white;
+                border: none;
+                padding: 12px 25px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 600;
+                font-size: 0.95rem;
+                transition: background 0.2s;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+
+            .fixed-checkout-btn:hover {
+                background: #4a3bc4;
+            }
+
+            .merchandise-grid {
+                padding-bottom: 100px;
+            }
+
             /* QR Code Modal */
             .modal {
                 display: none;
@@ -372,6 +427,17 @@
             <div class="merchandise-grid" id="merchandiseGrid"></div>
         </div>
 
+        <!-- Fixed Checkout Button -->
+        <div class="fixed-checkout-container" id="fixedCheckout">
+            <div class="fixed-item-info">
+                <div class="fixed-item-name" id="fixedItemName">Select an item</div>
+                <div class="fixed-item-price" id="fixedItemPrice">0.00 CRC</div>
+            </div>
+            <button class="fixed-checkout-btn" id="fixedCheckoutBtn" onclick="fixedCheckout()">
+                Checkout
+            </button>
+        </div>
+
         <!-- QR Code Modal -->
         <div class="modal" id="qrModal">
             <div class="modal-content">
@@ -401,6 +467,7 @@
                     icon: '🧦',
                     category: 'socks',
                     basePrice: 20, // Price for 1 item (in CRC)
+                    maxQuantity: 5,
                 },
                 {
                     id: 'stickers-001',
@@ -409,11 +476,14 @@
                     icon: '🎨',
                     category: 'stickers',
                     basePrice: 2, // Price for 1 item (in CRC)
+                    maxQuantity: 10,
                 }
             ];
 
             const MAX_QUANTITY = 5;
-            const BASE_URL = window.location.origin + window.location.pathname.replace('merchandise.html', '');
+            const BASE_URL = window.location.origin + window.location.pathname.replace('merchandise-demo.html', '');
+
+            // Track all selected items (those with quantity > 0)
 
             // Initialize merchandise grid
             function initMerchandise() {
@@ -432,7 +502,7 @@
                 card.className = 'merchandise-card';
                 card.dataset.itemId = item.id;
 
-                const quantity = 1; // Default quantity
+                const quantity = 0; // Default quantity
 
                 card.innerHTML = `
                     <div class="card-image ${item.category}">${item.icon}</div>
@@ -445,26 +515,22 @@
                         </div>
 
                         <div class="quantity-picker">
-                            <label class="quantity-label">Qty (max 5):</label>
+                            <label class="quantity-label">Qty (max ${item.maxQuantity}):</label>
                             <div class="quantity-controls">
                                 <button class="qty-btn" onclick="decreaseQuantity('${item.id}')">−</button>
                                 <input
                                     type="number"
                                     class="qty-input"
                                     id="qty-${item.id}"
-                                    value="1"
-                                    min="1"
-                                    max="${MAX_QUANTITY}"
-                                    onchange="updatePrice('${item.id}')"
-                                    onkeyup="updatePrice('${item.id}')"
+                                    value="0"
+                                    min="0"
+                                    max="${item.maxQuantity}"
+                                    onchange="handleInputChange('${item.id}')"
+                                    onkeyup="handleInputChange('${item.id}')"
                                 />
                                 <button class="qty-btn" onclick="increaseQuantity('${item.id}')">+</button>
                             </div>
                         </div>
-
-                        <button class="checkout-btn" id="checkout-btn-${item.id}" onclick="checkout('${item.id}')">
-                            Checkout - ${(item.basePrice * quantity * quantity).toFixed(2)} CRC
-                        </button>
                     </div>
                 `;
 
@@ -474,39 +540,98 @@
             // Quantity controls
             function increaseQuantity(itemId) {
                 const input = document.getElementById(`qty-${itemId}`);
-                const current = parseInt(input.value) || 1;
-                if (current < MAX_QUANTITY) {
+                const current = parseInt(input.value) || 0;
+                const item = MERCHANDISE_ITEMS.find((i) => i.id === itemId);
+                if (item && current < item.maxQuantity) {
                     input.value = current + 1;
-                    updatePrice(itemId);
+                    updateItemPrice(itemId);
                 }
             }
 
             function decreaseQuantity(itemId) {
                 const input = document.getElementById(`qty-${itemId}`);
-                const current = parseInt(input.value) || 1;
-                if (current > 1) {
+                const current = parseInt(input.value) || 0;
+                if (current > 0) {
                     input.value = current - 1;
-                    updatePrice(itemId);
+                    updateItemPrice(itemId);
                 }
             }
 
-            // Update price based on quantity (quadratic pricing)
-            function updatePrice(itemId) {
+            // Universal price update function - calculates total across all selected items
+            function updateItemPrice(itemId) {
                 const input = document.getElementById(`qty-${itemId}`);
-                let quantity = parseInt(input.value) || 1;
-
-                // Clamp to valid range
-                if (quantity < 1) quantity = 1;
-                if (quantity > MAX_QUANTITY) quantity = MAX_QUANTITY;
-                input.value = quantity;
-
                 const item = MERCHANDISE_ITEMS.find((i) => i.id === itemId);
                 if (!item) return;
 
-                // Quadratic pricing: price = basePrice * quantity^2
-                const totalPrice = item.basePrice * quantity * quantity;
+                let quantity = parseInt(input.value) || 0;
 
-                document.getElementById(`checkout-btn-${itemId}`).textContent = `Checkout - ${totalPrice.toFixed(2)} CRC`;
+                // Clamp to valid range
+                if (quantity < 0) quantity = 0;
+                if (quantity > item.maxQuantity) quantity = item.maxQuantity;
+                input.value = quantity;
+
+                // Calculate total price across ALL items with quantity > 0
+                let totalPrice = 0;
+                let selectedItems = [];
+
+                MERCHANDISE_ITEMS.forEach((merch) => {
+                    const qtyInput = document.getElementById(`qty-${merch.id}`);
+                    const qty = parseInt(qtyInput.value) || 0;
+                    if (qty > 0) {
+                        const itemPrice = merch.basePrice * qty * qty;
+                        totalPrice += itemPrice;
+                        selectedItems.push(`${merch.name} (${qty})`);
+                    }
+                });
+
+                // Update the fixed button with all selected items and total
+                if (selectedItems.length === 0) {
+                    document.getElementById('fixedItemName').textContent = 'Select an item';
+                    document.getElementById('fixedItemPrice').textContent = '0.00 CRC';
+                    document.getElementById('fixedCheckoutBtn').disabled = true;
+                } else if (selectedItems.length === 1) {
+                    document.getElementById('fixedItemName').textContent = selectedItems[0];
+                    document.getElementById('fixedItemPrice').textContent = `${totalPrice.toFixed(2)} CRC`;
+                    document.getElementById('fixedCheckoutBtn').disabled = false;
+                } else {
+                    document.getElementById('fixedItemName').textContent = `${selectedItems.length} items selected`;
+                    document.getElementById('fixedItemPrice').textContent = `${totalPrice.toFixed(2)} CRC`;
+                    document.getElementById('fixedCheckoutBtn').disabled = false;
+                }
+            }
+
+            // Handle manual input changes (keyboard/typing)
+            function handleInputChange(itemId) {
+                updateItemPrice(itemId);
+            }
+
+            // Select an item and update the fixed checkout button
+            function selectItem(itemId) {
+                updateItemPrice(itemId);
+            }
+
+            // Trigger checkout from fixed button
+            function fixedCheckout() {
+                // Collect all selected items with quantities > 0
+                let selectedItems = [];
+                MERCHANDISE_ITEMS.forEach((item) => {
+                    const qtyInput = document.getElementById(`qty-${item.id}`);
+                    const qty = parseInt(qtyInput.value) || 0;
+                    if (qty > 0) {
+                        selectedItems.push({ item, quantity: qty });
+                    }
+                });
+
+                if (selectedItems.length === 0) return;
+
+                // For now, checkout the first item or handle multiple
+                // If only one item, checkout normally
+                if (selectedItems.length === 1) {
+                    checkout(selectedItems[0].item.id);
+                } else {
+                    // Multiple items - checkout all together
+                    checkoutMultiple(selectedItems);
+                }
             }
 
             // Checkout flow
@@ -523,6 +648,52 @@
 
                 // Show QR modal
                 showQrModal(item, quantity, totalPrice, checkoutData);
+            }
+
+            // Checkout multiple items at once
+            function checkoutMultiple(selectedItems) {
+                // Calculate total price and build item list for display
+                let totalPrice = 0;
+                let itemNames = [];
+
+                selectedItems.forEach((sel) => {
+                    const itemPrice = sel.item.basePrice * sel.quantity * sel.quantity;
+                    totalPrice += itemPrice;
+                    itemNames.push(sel.item.name);
+                });
+
+                // Generate checkout URL with all items
+                const checkoutData = generateCheckoutDataMultiple(selectedItems, totalPrice);
+
+                // Show QR modal with multiple items info
+                showQrModalMultiple(selectedItems, totalPrice, checkoutData);
+            }
+
+            // Generate checkout data with encoding for multiple items
+            function generateCheckoutDataMultiple(selectedItems, totalPrice) {
+                // Get current user address
+                const userAddress = getUserAddress();
+                const recipientAddress = getRecipientAddress();
+
+                // Create a combined item ID for multiple items
+                const itemIds = selectedItems.map((sel) => sel.item.id).join(',');
+
+                // Create the checkout URL for Metri app transfer
+                const dataPayload = ethers.utils.solidityPack(
+                    ['address', 'address', 'string'],
+                    [userAddress, recipientAddress, itemIds]
+                );
+
+                const checkoutUrl =
+                    `https://app.metri.xyz/transfer/0x6fff09332ae273ba7095a2a949a7f4b89eb37c52/crc/${totalPrice}?data=${dataPayload}`;
+
+                return {
+                    userAddress,
+                    recipientAddress,
+                    itemIds,
+                    totalPrice,
+                    checkoutUrl,
+                };
             }
 
             // Generate checkout data with encoding
@@ -595,18 +766,54 @@
                 document.getElementById('qrModal').classList.add('active');
             }
 
+            // Show QR modal for multiple items
+            function showQrModalMultiple(selectedItems, totalPrice, checkoutData) {
+                // Clear previous QR code
+                document.getElementById('qrCodeContainer').innerHTML = '';
+
+                // Build item summary
+                let itemSummary = selectedItems.map((sel) => `${sel.item.name} (${sel.quantity})`).join(', ');
+
+                // Update modal content
+                document.getElementById('modalItemName').textContent = itemSummary;
+                document.getElementById('modalQuantity').textContent = selectedItems.length + ' item(s)';
+                document.getElementById('modalTotalPrice').textContent = totalPrice.toFixed(2);
+
+                // Generate QR code
+                setTimeout(() => {
+                    const qrContainer = document.getElementById('qrCodeContainer');
+                    new QRCode(qrContainer, {
+                        text: checkoutData.checkoutUrl,
+                        width: 300,
+                        height: 300,
+                        colorDark: '#191568',
+                        colorLight: '#ffffff',
+                        correctLevel: QRCode.CorrectLevel.L,
+                    });
+                }, 0);
+
+                // Show modal
+                document.getElementById('qrModal').classList.add('active');
+            }
+
             // Close QR modal
             function closeQrModal() {
                 document.getElementById('qrModal').classList.remove('active');
 
-                // Reset all quantities to 1
+                // Reset all quantities to 0
                 MERCHANDISE_ITEMS.forEach((item) => {
                     const input = document.getElementById(`qty-${item.id}`);
                     if (input) {
-                        input.value = 1;
+                        input.value = 0;
                         updatePrice(item.id);
                     }
                 });
+
+                // Reset selected item and fixed button
+                selectedItemId = null;
+                document.getElementById('fixedItemName').textContent = 'Select an item';
+                document.getElementById('fixedItemPrice').textContent = '0.00 CRC';
+                document.getElementById('fixedCheckoutBtn').disabled = true;
             }
 
             // Initialize on page load
