@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Merchandise Shop - Circles Tools</title>
+        <link
+            href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+            rel="stylesheet"
+        />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                margin: 0;
+                font-family: "DM Sans", sans-serif;
+                background: #fff7f5;
+                color: #191568;
+                line-height: 1.6;
+            }
+
+            header {
+                background: #191568;
+                color: #fff;
+                padding: 30px 20px;
+                text-align: center;
+            }
+
+            h1 {
+                margin: 0;
+                font-weight: 600;
+                font-size: 1.8rem;
+            }
+
+            .header-subtitle {
+                margin: 0.5rem 0 0;
+                font-weight: 400;
+                opacity: 0.95;
+            }
+
+            .container {
+                max-width: 1200px;
+                margin: 40px auto;
+                padding: 0 20px;
+            }
+
+            .merchandise-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+                gap: 25px;
+                margin-top: 30px;
+            }
+
+            .merchandise-card {
+                background: white;
+                border-radius: 12px;
+                overflow: hidden;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                transition: transform 0.2s, box-shadow 0.2s;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .merchandise-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+            }
+
+            .card-image {
+                width: 100%;
+                height: 200px;
+                background: linear-gradient(135deg, #5c49e4 0%, #ff491b 100%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 4rem;
+                color: white;
+            }
+
+            .card-image.socks {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            }
+
+            .card-image.stickers {
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            }
+
+            .card-image.pins {
+                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            }
+
+            .card-image.hats {
+                background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            }
+
+            .card-content {
+                padding: 25px;
+                display: flex;
+                flex-direction: column;
+                flex-grow: 1;
+            }
+
+            .card-title {
+                font-size: 1.4rem;
+                font-weight: 600;
+                margin: 0;
+                color: #191568;
+            }
+
+            .card-description {
+                font-size: 0.95rem;
+                color: #666;
+                margin-bottom: 15px;
+                line-height: 1.5;
+            }
+
+            .price-info {
+                background: #f8f8f8;
+                padding: 12px;
+                border-radius: 6px;
+                margin-bottom: 0;
+                font-weight: 600;
+                color: #191568;
+            }
+
+            .price-note {
+                font-size: 0.85rem;
+                color: #999;
+                font-weight: 400;
+                margin-top: 5px;
+            }
+
+            .quantity-picker {
+                margin: 20px 0;
+                display: flex;
+                align-items: center;
+                gap: 15px;
+            }
+
+            .quantity-label {
+                font-weight: 600;
+                font-size: 0.95rem;
+                white-space: nowrap;
+            }
+
+            .quantity-controls {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex: 1;
+            }
+
+            .qty-btn {
+                background: #191568;
+                color: white;
+                border: none;
+                width: 40px;
+                height: 40px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 600;
+                font-size: 1.2rem;
+                transition: background 0.2s;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .qty-btn:hover:not(:disabled) {
+                background: #2d2080;
+            }
+
+            .qty-btn:disabled {
+                background: #ccc;
+                cursor: not-allowed;
+            }
+
+            .qty-input {
+                width: 60px;
+                padding: 8px;
+                text-align: center;
+                border: 2px solid #191568;
+                border-radius: 6px;
+                font-size: 1rem;
+                font-weight: 600;
+                color: #191568;
+            }
+
+            .qty-input:focus {
+                outline: none;
+                border-color: #5c49e4;
+                box-shadow: 0 0 0 3px rgba(92, 73, 228, 0.1);
+            }
+
+            .checkout-btn {
+                background: #5c49e4;
+                color: white;
+                border: none;
+                padding: 12px 20px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 600;
+                font-size: 1rem;
+                transition: background 0.2s;
+                width: 100%;
+                margin-top: auto;
+            }
+
+            .checkout-btn:hover {
+                background: #4a3bc4;
+            }
+
+            .checkout-btn:disabled {
+                background: #ccc;
+                cursor: not-allowed;
+            }
+
+            /* QR Code Modal */
+            .modal {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 1000;
+                justify-content: center;
+                align-items: center;
+            }
+
+            .modal.active {
+                display: flex;
+            }
+
+            .modal-content {
+                background: white;
+                border-radius: 12px;
+                padding: 30px;
+                max-width: 500px;
+                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+                text-align: center;
+            }
+
+            .modal-title {
+                font-size: 1.4rem;
+                font-weight: 600;
+                margin: 0 0 20px;
+                color: #191568;
+            }
+
+            .qr-container {
+                background: #f8f8f8;
+                padding: 20px;
+                border-radius: 8px;
+                margin: 20px 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+
+            .qr-container canvas {
+                max-width: 100%;
+            }
+
+            .checkout-details {
+                background: #f0f0f0;
+                padding: 15px;
+                border-radius: 6px;
+                margin: 15px 0;
+                text-align: left;
+            }
+
+            .checkout-details p {
+                margin: 8px 0;
+                font-size: 0.95rem;
+            }
+
+            .checkout-details strong {
+                color: #191568;
+            }
+
+            .checkout-url {
+                background: white;
+                border: 1px solid #ddd;
+                padding: 12px;
+                border-radius: 6px;
+                margin: 15px 0;
+                word-break: break-all;
+                font-size: 0.85rem;
+                color: #666;
+                font-family: "Courier New", monospace;
+                max-height: 100px;
+                overflow-y: auto;
+            }
+
+            .modal-buttons {
+                display: flex;
+                gap: 10px;
+                margin-top: 20px;
+                justify-content: center;
+            }
+
+            .modal-btn {
+                padding: 10px 20px;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 600;
+                transition: background 0.2s;
+            }
+
+            .modal-btn.primary {
+                background: #191568;
+                color: white;
+                flex: 1;
+            }
+
+            .modal-btn.primary:hover {
+                background: #2d2080;
+            }
+
+            .modal-btn.secondary {
+                background: #f0f0f0;
+                color: #191568;
+                flex: 1;
+            }
+
+            .modal-btn.secondary:hover {
+                background: #e0e0e0;
+            }
+
+            .modal-btn.icon-btn {
+                background: #f0f0f0;
+                color: #191568;
+                padding: 8px 12px;
+                min-width: auto;
+            }
+
+            @media (max-width: 768px) {
+                .merchandise-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .modal-content {
+                    max-width: 90%;
+                    padding: 20px;
+                }
+
+                .modal-buttons {
+                    flex-direction: column;
+                }
+            }
+        </style>
+        <script defer data-domain="aboutcircles.github.io/circlestools" src="https://plausible.io/js/script.js"></script>
+    </head>
+    <body>
+        <header>
+            <h1>Merchandise Shop</h1>
+            <p class="header-subtitle">Support Circles with exclusive merchandise</p>
+        </header>
+
+        <div class="container">
+            <div class="merchandise-grid" id="merchandiseGrid"></div>
+        </div>
+
+        <!-- QR Code Modal -->
+        <div class="modal" id="qrModal">
+            <div class="modal-content">
+                <h2 class="modal-title">Checkout</h2>
+                <div class="checkout-details">
+                    <p><strong>Item:</strong> <span id="modalItemName"></span></p>
+                    <p><strong>Quantity:</strong> <span id="modalQuantity"></span></p>
+                    <p><strong>Total Price:</strong> <span id="modalTotalPrice"></span> CRC</p>
+                </div>
+                <p style="color: #666; font-size: 0.9rem; margin: 15px 0;">
+                    Scan this QR code with your wallet to complete the purchase:
+                </p>
+                <div class="qr-container" id="qrCodeContainer"></div>
+                <div class="modal-buttons">
+                    <button class="modal-btn secondary" onclick="closeQrModal()">Done</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Configuration
+            const MERCHANDISE_ITEMS = [
+                {
+                    id: 'socks-001',
+                    name: 'Circles Socks',
+                    description: 'Comfortable socks with Circles logo.',
+                    icon: '🧦',
+                    category: 'socks',
+                    basePrice: 20, // Price for 1 item (in CRC)
+                },
+                {
+                    id: 'stickers-001',
+                    name: 'Circles Sticker',
+                    description: 'High-quality stickers. Perfect for laptops and water bottles.',
+                    icon: '🎨',
+                    category: 'stickers',
+                    basePrice: 2, // Price for 1 item (in CRC)
+                }
+            ];
+
+            const MAX_QUANTITY = 5;
+            const BASE_URL = window.location.origin + window.location.pathname.replace('merchandise.html', '');
+
+            // Initialize merchandise grid
+            function initMerchandise() {
+                const grid = document.getElementById('merchandiseGrid');
+                grid.innerHTML = '';
+
+                MERCHANDISE_ITEMS.forEach((item) => {
+                    const card = createMerchandiseCard(item);
+                    grid.appendChild(card);
+                });
+            }
+
+            // Create merchandise card
+            function createMerchandiseCard(item) {
+                const card = document.createElement('div');
+                card.className = 'merchandise-card';
+                card.dataset.itemId = item.id;
+
+                const quantity = 1; // Default quantity
+
+                card.innerHTML = `
+                    <div class="card-image ${item.category}">${item.icon}</div>
+                    <div class="card-content">
+                        <h3 class="card-title">${item.name}</h3>
+                        <p class="card-description">${item.description}</p>
+                        <div class="price-info">
+                            <span id="price-${item.id}">${item.basePrice.toFixed(2)} CRC</span>
+                            <div class="price-note">Quadratic pricing: price = basePrice × quantity²</div>
+                        </div>
+
+                        <div class="quantity-picker">
+                            <label class="quantity-label">Qty (max 5):</label>
+                            <div class="quantity-controls">
+                                <button class="qty-btn" onclick="decreaseQuantity('${item.id}')">−</button>
+                                <input
+                                    type="number"
+                                    class="qty-input"
+                                    id="qty-${item.id}"
+                                    value="1"
+                                    min="1"
+                                    max="${MAX_QUANTITY}"
+                                    onchange="updatePrice('${item.id}')"
+                                    onkeyup="updatePrice('${item.id}')"
+                                />
+                                <button class="qty-btn" onclick="increaseQuantity('${item.id}')">+</button>
+                            </div>
+                        </div>
+
+                        <button class="checkout-btn" id="checkout-btn-${item.id}" onclick="checkout('${item.id}')">
+                            Checkout - ${(item.basePrice * quantity * quantity).toFixed(2)} CRC
+                        </button>
+                    </div>
+                `;
+
+                return card;
+            }
+
+            // Quantity controls
+            function increaseQuantity(itemId) {
+                const input = document.getElementById(`qty-${itemId}`);
+                const current = parseInt(input.value) || 1;
+                if (current < MAX_QUANTITY) {
+                    input.value = current + 1;
+                    updatePrice(itemId);
+                }
+            }
+
+            function decreaseQuantity(itemId) {
+                const input = document.getElementById(`qty-${itemId}`);
+                const current = parseInt(input.value) || 1;
+                if (current > 1) {
+                    input.value = current - 1;
+                    updatePrice(itemId);
+                }
+            }
+
+            // Update price based on quantity (quadratic pricing)
+            function updatePrice(itemId) {
+                const input = document.getElementById(`qty-${itemId}`);
+                let quantity = parseInt(input.value) || 1;
+
+                // Clamp to valid range
+                if (quantity < 1) quantity = 1;
+                if (quantity > MAX_QUANTITY) quantity = MAX_QUANTITY;
+                input.value = quantity;
+
+                const item = MERCHANDISE_ITEMS.find((i) => i.id === itemId);
+                if (!item) return;
+
+                // Quadratic pricing: price = basePrice * quantity^2
+                const totalPrice = item.basePrice * quantity * quantity;
+
+                document.getElementById(`checkout-btn-${itemId}`).textContent = `Checkout - ${totalPrice.toFixed(2)} CRC`;
+            }
+
+            // Checkout flow
+            function checkout(itemId) {
+                const item = MERCHANDISE_ITEMS.find((i) => i.id === itemId);
+                if (!item) return;
+
+                const quantityInput = document.getElementById(`qty-${itemId}`);
+                const quantity = parseInt(quantityInput.value) || 1;
+                const totalPrice = item.basePrice * quantity * quantity;
+
+                // Generate checkout URL and data
+                const checkoutData = generateCheckoutData(item, quantity, totalPrice);
+
+                // Show QR modal
+                showQrModal(item, quantity, totalPrice, checkoutData);
+            }
+
+            // Generate checkout data with encoding
+            function generateCheckoutData(item, quantity, totalPrice) {
+                // Get current user address (you might want to prompt for this)
+                const userAddress = getUserAddress();
+                const recipientAddress = getRecipientAddress(); // or contract address
+
+                // Create the checkout URL for Metri app transfer
+                // Data format: onBehalf (20 bytes) + recipient (20 bytes) + itemId (variable)
+                const dataPayload = ethers.utils.solidityPack(
+                    ['address', 'address', 'string'],
+                    [userAddress, recipientAddress, item.id]
+                );
+
+                const checkoutUrl =
+                    `https://app.metri.xyz/transfer/0x6fff09332ae273ba7095a2a949a7f4b89eb37c52/crc/${totalPrice}?data=${dataPayload}`;
+
+                return {
+                    userAddress,
+                    recipientAddress,
+                    itemId: item.id,
+                    quantity,
+                    totalPrice,
+                    checkoutUrl,
+                };
+            }
+
+            // Get or prompt for user address
+            function getUserAddress() {
+                const stored = localStorage.getItem('merchandiseUserAddress');
+                if (stored && stored.startsWith('0x')) return stored;
+
+                // For now, use a placeholder
+                // In production, connect to wallet
+                return '0x0000000000000000000000000000000000000000';
+            }
+
+            // Get recipient address (e.g., organization)
+            function getRecipientAddress() {
+                // This should be configured based on the OpenMiddleware contract
+                return localStorage.getItem('merchandiseRecipientAddress') ||
+                    '0x0ff9ae8920c832a7ed0727fd3d779f37535ae644';
+            }
+
+            // Show QR code modal
+            function showQrModal(item, quantity, totalPrice, checkoutData) {
+                // Clear previous QR code
+                document.getElementById('qrCodeContainer').innerHTML = '';
+
+                // Update modal content
+                document.getElementById('modalItemName').textContent = item.name;
+                document.getElementById('modalQuantity').textContent = quantity;
+                document.getElementById('modalTotalPrice').textContent = totalPrice.toFixed(2);
+
+                // Generate QR code
+                setTimeout(() => {
+                    const qrContainer = document.getElementById('qrCodeContainer');
+                    new QRCode(qrContainer, {
+                        text: checkoutData.checkoutUrl,
+                        width: 300,
+                        height: 300,
+                        colorDark: '#191568',
+                        colorLight: '#ffffff',
+                        correctLevel: QRCode.CorrectLevel.L,
+                    });
+                }, 0);
+
+                // Show modal
+                document.getElementById('qrModal').classList.add('active');
+            }
+
+            // Close QR modal
+            function closeQrModal() {
+                document.getElementById('qrModal').classList.remove('active');
+
+                // Reset all quantities to 1
+                MERCHANDISE_ITEMS.forEach((item) => {
+                    const input = document.getElementById(`qty-${item.id}`);
+                    if (input) {
+                        input.value = 1;
+                        updatePrice(item.id);
+                    }
+                });
+            }
+
+            // Initialize on page load
+            document.addEventListener('DOMContentLoaded', initMerchandise);
+
+            // Close modal when clicking outside
+            document.getElementById('qrModal').addEventListener('click', (e) => {
+                if (e.target.id === 'qrModal') {
+                    closeQrModal();
+                }
+            });
+        </script>
+    </body>
+</html>
