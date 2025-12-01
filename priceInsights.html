@@ -83,11 +83,15 @@
 
         .heatmap-container {
             position: relative;
-            height: 600px;
+            height: 800px;
             background: white;
             border-radius: 4px;
             padding: 16px;
             margin-bottom: 16px;
+        }
+
+        #heatmapChart {
+            cursor: default;
         }
 
         .heatmap-legend {
@@ -674,6 +678,17 @@
                 </div>
             </div>
 
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 8px 12px; background: white; border-radius: 4px; font-size: 0.8125em;">
+                <div>
+                    <span style="font-weight: 600;">Displaying:</span>
+                    <span id="heatmapDisplayInfo">Loading...</span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="changeHeatmapPage(-1)" id="prevHeatmapBtn" style="padding: 4px 12px; background: white; color: #333; border: 1px solid #d0d0d0; border-radius: 4px; cursor: pointer; font-size: 0.875em;">← Prev</button>
+                    <button onclick="changeHeatmapPage(1)" id="nextHeatmapBtn" style="padding: 4px 12px; background: white; color: #333; border: 1px solid #d0d0d0; border-radius: 4px; cursor: pointer; font-size: 0.875em;">Next →</button>
+                </div>
+            </div>
+
             <div class="heatmap-container">
                 <canvas id="heatmapChart"></canvas>
             </div>
@@ -718,11 +733,14 @@
         let availableSnapshots = [];
         let currentSnapshotIndex = 0;
         let currentLiquidityData = null;
+        let heatmapCurrentPage = 0;
+        let heatmapPageSize = 100; // Pairs per page
+        let allMatrixData = []; // Store all pairs for pagination
 
         // Global cache for token info to avoid redundant API calls
         let tokenInfoCache = {};
 
-        const API_BASE = "http://localhost:3000";//window.location.origin;
+        const API_BASE = "https://arbbot-analytics-api-n53ye.ondigitalocean.app";
 
         // ========== LIQUIDITY HEATMAP FUNCTIONS ==========
 
@@ -931,7 +949,7 @@
             const ctx = document.getElementById('heatmapChart').getContext('2d');
 
             // Prepare matrix data
-            const matrixData = data.pairs.map(pair => {
+            allMatrixData = data.pairs.map(pair => {
                 let value;
                 switch(metric) {
                     case 'avg':
@@ -969,8 +987,19 @@
                 };
             });
 
-            // Limit to 100 pairs for performance
-            const limitedData = matrixData.slice(0, 100);
+            // Display ALL data (no pagination)
+            const limitedData = allMatrixData;
+
+            // Update display info
+            document.getElementById('heatmapDisplayInfo').textContent =
+                `Displaying all ${allMatrixData.length} pairs`;
+
+            // Hide pagination buttons since we're showing all data
+            document.getElementById('prevHeatmapBtn').style.display = 'none';
+            document.getElementById('nextHeatmapBtn').style.display = 'none';
+
+            // Show info about displayed data
+            console.log(`Heatmap: Displaying all ${allMatrixData.length} pairs`);
 
             heatmapChart = new Chart(ctx, {
                 type: 'matrix',
@@ -990,10 +1019,10 @@
                                 return getLiquidityColor(dataPoint.avg_liq || 0);
                             }
                         },
-                        borderWidth: 1,
+                        borderWidth: 0.5,
                         borderColor: '#fff',
-                        width: ({chart}) => (chart.chartArea || {}).width / limitedData.length * 0.9,
-                        height: ({chart}) => (chart.chartArea || {}).height / limitedData.length * 0.9
+                        width: 5,
+                        height: 5
                     }]
                 },
                 options: {
@@ -1034,14 +1063,18 @@
                             ticks: {
                                 maxRotation: 90,
                                 minRotation: 90,
-                                font: { size: 7 }
+                                font: { size: 6 },
+                                autoSkip: true,
+                                maxTicksLimit: 50
                             }
                         },
                         y: {
                             type: 'category',
                             offset: true,
                             ticks: {
-                                font: { size: 7 }
+                                font: { size: 6 },
+                                autoSkip: true,
+                                maxTicksLimit: 50
                             }
                         }
                     }
@@ -1055,6 +1088,68 @@
                 createHeatmap(currentLiquidityData, this.value);
             }
         });
+
+        // Heatmap pagination functions
+        function changeHeatmapPage(direction) {
+            const totalPages = Math.ceil(allMatrixData.length / heatmapPageSize);
+            const newPage = heatmapCurrentPage + direction;
+
+            if (newPage >= 0 && newPage < totalPages) {
+                heatmapCurrentPage = newPage;
+                renderHeatmapPage();
+            }
+        }
+
+        function updateHeatmapDisplayInfo() {
+            const startIdx = heatmapCurrentPage * heatmapPageSize + 1;
+            const endIdx = Math.min((heatmapCurrentPage + 1) * heatmapPageSize, allMatrixData.length);
+            const totalPages = Math.ceil(allMatrixData.length / heatmapPageSize);
+
+            document.getElementById('heatmapDisplayInfo').textContent =
+                `Pairs ${startIdx}-${endIdx} of ${allMatrixData.length} (Page ${heatmapCurrentPage + 1}/${totalPages})`;
+
+            // Update button states
+            const prevBtn = document.getElementById('prevHeatmapBtn');
+            const nextBtn = document.getElementById('nextHeatmapBtn');
+
+            prevBtn.disabled = heatmapCurrentPage === 0;
+            nextBtn.disabled = heatmapCurrentPage >= totalPages - 1;
+
+            // Style disabled buttons
+            if (prevBtn.disabled) {
+                prevBtn.style.opacity = '0.4';
+                prevBtn.style.cursor = 'not-allowed';
+            } else {
+                prevBtn.style.opacity = '1';
+                prevBtn.style.cursor = 'pointer';
+            }
+
+            if (nextBtn.disabled) {
+                nextBtn.style.opacity = '0.4';
+                nextBtn.style.cursor = 'not-allowed';
+            } else {
+                nextBtn.style.opacity = '1';
+                nextBtn.style.cursor = 'pointer';
+            }
+        }
+
+        function renderHeatmapPage() {
+            if (!heatmapChart || allMatrixData.length === 0) return;
+
+            const startIdx = heatmapCurrentPage * heatmapPageSize;
+            const endIdx = Math.min(startIdx + heatmapPageSize, allMatrixData.length);
+            const pageData = allMatrixData.slice(startIdx, endIdx);
+
+            // Update chart data
+            heatmapChart.data.datasets[0].data = pageData;
+            heatmapChart.update();
+            heatmapChart.resetZoom();
+
+            // Update display info
+            updateHeatmapDisplayInfo();
+
+            console.log(`Heatmap: Showing page ${heatmapCurrentPage + 1}, pairs ${startIdx + 1}-${endIdx}`);
+        }
 
         // ========== END LIQUIDITY HEATMAP FUNCTIONS ==========
 
@@ -1438,6 +1533,7 @@
                 chart.zoom(factor);
             }
         }
+
 
         // Navigate between snapshots
         function navigateSnapshot(direction) {
