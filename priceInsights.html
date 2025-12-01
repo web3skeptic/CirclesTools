@@ -619,7 +619,7 @@
             <div class="section-header">
                 <div>
                     <div class="section-title">Liquidity Heatmap</div>
-                    <div class="section-subtitle">Token pair liquidity analysis</div>
+                    <div class="section-subtitle">Avatar pair liquidity analysis</div>
                 </div>
             </div>
 
@@ -683,15 +683,17 @@
             </div>
 
             <div class="liquidity-table">
-                <h4>Token Pair Details</h4>
+                <h4>Avatar Pair Details</h4>
                 <div class="liquidity-table-wrapper">
                     <table>
                         <thead>
                             <tr>
                                 <th>#</th>
-                                <th>Source Token</th>
-                                <th>Target Token</th>
+                                <th>Source Avatar</th>
+                                <th>Target Avatar</th>
                                 <th>Avg Liq</th>
+                                <th>Src Price</th>
+                                <th>Tgt Price</th>
                                 <th>Price Ratio</th>
                                 <th>Success</th>
                                 <th>Obs</th>
@@ -699,7 +701,7 @@
                             </tr>
                         </thead>
                         <tbody id="liquidityPairTableBody">
-                            <tr><td colspan="8" class="loading">Loading data</td></tr>
+                            <tr><td colspan="10" class="loading">Loading data</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -883,6 +885,10 @@
                 const priceRatioClass = priceRatio < 0.5 ? 'liquidity-high' :
                                        priceRatio < 0.9 ? 'liquidity-medium' : 'liquidity-low';
 
+                // Format prices
+                const srcPrice = pair.avg_source_price ? (Number(pair.avg_source_price) / 1e18).toFixed(4) : 'N/A';
+                const tgtPrice = pair.avg_target_price ? (Number(pair.avg_target_price) / 1e18).toFixed(4) : 'N/A';
+
                 // Determine opportunity based on price ratio and liquidity
                 let opportunity;
                 if (priceRatio < 0.5 && avgCrc >= 1) {
@@ -900,9 +906,11 @@
                 return `
                     <tr>
                         <td>${index + 1}</td>
-                        <td style="font-size: 0.7em;">${pair.source_token.substring(0, 10)}...</td>
-                        <td style="font-size: 0.7em;">${pair.target_token.substring(0, 10)}...</td>
+                        <td style="font-size: 0.65em; word-break: break-all;">${pair.source_avatar}</td>
+                        <td style="font-size: 0.65em; word-break: break-all;">${pair.target_avatar}</td>
                         <td class="${liquidityClass}">${formatLiquidity(pair.avg_liquidity)}</td>
+                        <td>${srcPrice}</td>
+                        <td>${tgtPrice}</td>
                         <td class="${priceRatioClass}">${priceRatio.toFixed(3)}</td>
                         <td>${formatSuccessRate(pair.success_rate)}</td>
                         <td>${pair.observation_count}</td>
@@ -946,15 +954,17 @@
                 }
 
                 return {
-                    x: pair.source_token.substring(0, 8) + '...',
-                    y: pair.target_token.substring(0, 8) + '...',
+                    x: pair.source_avatar.substring(0, 8) + '...',
+                    y: pair.target_avatar.substring(0, 8) + '...',
                     v: value,
-                    source_full: pair.source_token,
-                    target_full: pair.target_token,
+                    source_full: pair.source_avatar,
+                    target_full: pair.target_avatar,
                     avg_liq: pair.avg_liquidity,
                     success_rate: pair.success_rate,
                     obs_count: pair.observation_count,
                     price_ratio: pair.avg_price_ratio,
+                    source_price: pair.avg_source_price,
+                    target_price: pair.avg_target_price,
                     metric: metric
                 };
             });
@@ -994,15 +1004,20 @@
                         tooltip: {
                             callbacks: {
                                 title() {
-                                    return 'Token Pair';
+                                    return 'Avatar Pair';
                                 },
                                 label(context) {
                                     const item = context.dataset.data[context.dataIndex];
                                     if (!item) return 'No data';
+                                    const srcPrice = item.source_price ? (Number(item.source_price) / 1e18).toFixed(4) : 'N/A';
+                                    const tgtPrice = item.target_price ? (Number(item.target_price) / 1e18).toFixed(4) : 'N/A';
                                     return [
                                         `Source: ${item.source_full || 'N/A'}`,
                                         `Target: ${item.target_full || 'N/A'}`,
                                         `Avg Liquidity: ${item.avg_liq ? formatLiquidity(item.avg_liq) : 'N/A'}`,
+                                        `Source Price: ${srcPrice}`,
+                                        `Target Price: ${tgtPrice}`,
+                                        `Price Ratio: ${item.price_ratio ? Number(item.price_ratio).toFixed(3) : 'N/A'}`,
                                         `Success Rate: ${item.success_rate !== undefined ? formatSuccessRate(item.success_rate) : 'N/A'}`,
                                         `Observations: ${item.obs_count || 0}`
                                     ];
