@@ -101,6 +101,10 @@
                 background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
             }
 
+            .card-image.coffee {
+                background: linear-gradient(135deg, #8e6c3a 0%, #d4a574 100%);
+            }
+
             .card-content {
                 padding: 25px;
                 display: flex;
@@ -460,6 +464,16 @@
         <script>
             // Configuration
             const MERCHANDISE_ITEMS = [
+                
+                {
+                    id: 'coffee-001',
+                    name: 'Cup of Coffee',
+                    description: 'Support with a virtual coffee. A simple way to say thanks!',
+                    icon: '☕',
+                    category: 'coffee',
+                    basePrice: 100, // Price for 1 item (in CRC)
+                    maxQuantity: 10,
+                },
                 {
                     id: 'socks-001',
                     name: 'Circles Socks',
